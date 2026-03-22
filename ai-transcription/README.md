@@ -1,155 +1,242 @@
 # AI Real-Time Transcription & Translation Service
 
-This Python-based AI service provides real-time speech transcription and translation for the video meeting application.
+Continuous audio transcription and language translation service powered by OpenAI Whisper and Google Translate, designed for video conferencing applications.
 
 ## Features
 
-- 🎤 Real-time speech-to-text transcription
-- 🌍 Automatic language translation (20+ languages supported)
-- 🔄 Continuous audio streaming and processing
-- 🤖 AI-powered language detection
-- 📝 Live transcription feed for all participants
+- **Real-time Speech-to-Text**: Continuous audio transcription using OpenAI Whisper
+- **Multi-language Support**: 20+ languages supported
+- **Automatic Language Detection**: Detects spoken language automatically
+- **Real-time Translation**: Translates transcriptions to user's preferred language
+- **Low Latency**: Optimized for real-time communication
+- **GPU Acceleration**: Supports CUDA for faster processing
 
 ## Supported Languages
 
-- English, Spanish, French, German, Italian
-- Portuguese, Russian, Japanese, Korean
-- Chinese (Simplified), Arabic, Hindi, Bengali
-- Urdu, Turkish, Vietnamese, Thai
-- Dutch, Polish, Swedish, and more...
+English, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean, Chinese, Arabic, Hindi, Bengali, Urdu, Turkish, Vietnamese, Thai, Dutch, Polish, Swedish
 
 ## Installation
 
 ### Prerequisites
 
 - Python 3.8 or higher
-- pip (Python package manager)
-- Microphone access
+- pip package manager
+- (Optional) CUDA-capable GPU for faster processing
 
-### Setup Steps
+### Install Dependencies
 
-1. Navigate to the ai-transcription directory:
 ```bash
-cd hiimeet/ai-transcription
-```
-
-2. Run the setup script (Windows):
-```bash
-setup.bat
-```
-
-Or manually install dependencies:
-```bash
+cd ai-transcription
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file (copy from `.env.example`):
+### Install FFmpeg (Required for audio processing)
+
+**Windows:**
 ```bash
-copy .env.example .env
+# Using Chocolatey
+choco install ffmpeg
+
+# Or download from: https://ffmpeg.org/download.html
 ```
 
-## Running the Service
-
-Start the transcription service:
-
+**macOS:**
 ```bash
-python transcription_service.py
+brew install ffmpeg
 ```
 
-The service will start on port 5002 by default.
+**Linux:**
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
 
-## How It Works
+## Configuration
 
-1. **Audio Capture**: The frontend captures audio from the user's microphone
-2. **Streaming**: Audio chunks are sent to the Python service via WebSocket
-3. **Transcription**: Google Speech Recognition API transcribes the audio
-4. **Translation**: Deep Translator translates text to each participant's chosen language
-5. **Broadcasting**: Translated text is sent back to all participants in real-time
+1. Copy the example environment file:
+```bash
+cp .env.example .env
+```
+
+2. Edit `.env` and configure:
+
+```env
+PORT=5002
+HOST=0.0.0.0
+
+# Whisper model size: tiny, base, small, medium, large
+# tiny: Fastest, least accurate (good for testing)
+# base: Good balance for real-time (recommended)
+# small: Better accuracy, slower
+# medium/large: Best accuracy, requires GPU
+WHISPER_MODEL=base
+
+TRANSLATION_SERVICE=google
+```
+
+## Usage
+
+### Start the Transcription Server
+
+```bash
+python transcription_server.py
+```
+
+The server will start on `http://localhost:5002`
+
+### Check Server Status
+
+```bash
+curl http://localhost:5002/health
+```
+
+## Integration with Video Meeting App
+
+The transcription service is already integrated with your video meeting frontend. To enable it:
+
+1. Start the transcription server (see above)
+2. In your video meeting, click the "🎤 Live Transcription" button
+3. Select your preferred language
+4. Click "Start Recording" to begin transcription
 
 ## API Endpoints
 
 ### HTTP Endpoints
 
-- `GET /health` - Health check
-- `GET /languages` - Get list of supported languages
+- `GET /` - Service status
+- `GET /health` - Detailed health check
 
 ### WebSocket Events
 
-#### Client → Server
-
+**Client → Server:**
 - `join_transcription_room` - Join a transcription room
 - `leave_transcription_room` - Leave a transcription room
+- `stream_audio_chunk` - Send audio data for transcription
 - `change_target_language` - Change translation target language
-- `transcribe_audio` - Send audio for transcription
-- `stream_audio_chunk` - Stream audio chunks for continuous transcription
 
-#### Server → Client
-
-- `connection_status` - Connection status update
-- `transcription_result` - Transcribed and translated text
+**Server → Client:**
+- `transcription_result` - Transcription and translation result
 - `transcription_error` - Error message
-- `language_changed` - Language change confirmation
+- `connection_status` - Connection status update
 
-## Configuration
+## Performance Optimization
 
-Edit `.env` file to configure:
+### Model Selection
 
-```env
-TRANSCRIPTION_PORT=5002
-FLASK_ENV=development
+- **tiny**: ~1GB RAM, fastest, 32x real-time on CPU
+- **base**: ~1GB RAM, good balance, 16x real-time on CPU (recommended)
+- **small**: ~2GB RAM, better accuracy, 6x real-time on CPU
+- **medium**: ~5GB RAM, high accuracy, requires GPU
+- **large**: ~10GB RAM, best accuracy, requires GPU
+
+### GPU Acceleration
+
+If you have a CUDA-capable GPU:
+
+```bash
+# Install PyTorch with CUDA support
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
-## Integration with Frontend
-
-The TranscriptionPanel component is already created in the frontend. To use it:
-
-```javascript
-import TranscriptionPanel from './TranscriptionPanel';
-
-<TranscriptionPanel 
-  roomId={roomId}
-  userId={userId}
-  userName={userName}
-  isEnabled={true}
-/>
-```
+The service will automatically use GPU if available.
 
 ## Troubleshooting
 
-### Microphone Access Issues
-- Ensure browser has microphone permissions
-- Check system microphone settings
-- Use HTTPS for production (required for microphone access)
+### "FFmpeg not found" error
 
-### Translation Errors
-- Check internet connection (requires online API access)
+Install FFmpeg (see Installation section above)
+
+### Slow transcription
+
+- Use a smaller Whisper model (tiny or base)
+- Enable GPU acceleration if available
+- Reduce audio chunk duration in `.env`
+
+### Translation errors
+
+- Check internet connection (Google Translate requires internet)
 - Verify language codes are correct
-- Some languages may have limited support
+- Check server logs for detailed error messages
 
-### Performance Issues
-- Reduce audio chunk size for faster processing
-- Use a more powerful server for multiple concurrent users
-- Consider using Whisper AI for better accuracy (requires more resources)
+### No transcription output
 
-## Future Enhancements
+- Ensure microphone permissions are granted in browser
+- Check audio quality and volume
+- Verify audio chunks are being sent (check browser console)
+- Check server logs for errors
 
-- [ ] Offline transcription using Whisper AI
-- [ ] Custom vocabulary support
-- [ ] Speaker diarization (identify different speakers)
-- [ ] Transcription history export
-- [ ] Real-time audio translation (voice-to-voice)
-- [ ] Sentiment analysis
-- [ ] Meeting summary generation
+## Development
 
-## Dependencies
+### Run in Development Mode
 
-- Flask - Web framework
-- Flask-SocketIO - WebSocket support
-- SpeechRecognition - Speech-to-text
-- Deep-Translator - Translation service
-- PyDub - Audio processing
-- NumPy - Numerical operations
+```bash
+# With auto-reload
+python transcription_server.py
+```
+
+### View Logs
+
+Logs are printed to console with timestamps and log levels.
+
+## Production Deployment
+
+### Using Gunicorn (Linux/macOS)
+
+```bash
+pip install gunicorn eventlet
+gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5002 transcription_server:app
+```
+
+### Using Docker
+
+```dockerfile
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install FFmpeg
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 5002
+
+CMD ["python", "transcription_server.py"]
+```
+
+## Architecture
+
+```
+┌─────────────────┐
+│  Video Meeting  │
+│   (Frontend)    │
+└────────┬────────┘
+         │ WebSocket
+         │ (Audio Chunks)
+         ▼
+┌─────────────────┐
+│  Transcription  │
+│     Server      │
+│  (Flask-SocketIO)│
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+┌────────┐ ┌──────────┐
+│Whisper │ │ Google   │
+│  AI    │ │Translate │
+└────────┘ └──────────┘
+```
 
 ## License
 
 MIT License
+
+## Credits
+
+- OpenAI Whisper for speech recognition
+- Google Translate for translation
+- Flask-SocketIO for real-time communication
